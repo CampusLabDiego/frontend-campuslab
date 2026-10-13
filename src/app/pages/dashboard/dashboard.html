@@ -1,65 +1,78 @@
+
 <div class="container">
+<nav class="navbar">
 
-<header>
+<button 
+class="logout"
+(click)="logout()">
 
-<h1>CampusLab</h1>
-
-<p>
-Sistema de gestión de recursos académicos
-</p>
-
-</header>
-
-
-<section class="user-card">
-
-<h2>Bienvenido</h2>
-
-<p>
-{{usuario?.name}}
-</p>
-
-<p>
-{{usuario?.username}}
-</p>
-
-</section>
-
-
-
-<div class="cards">
-
-
-<div class="card">
-<h3>📚 Recursos</h3>
-<p>Administración del catálogo</p>
-</div>
-
-
-<div class="card">
-<h3>📅 Reservas</h3>
-<p>Gestión de solicitudes</p>
-</div>
-
-
-<div class="card">
-<h3>📊 Reportes</h3>
-<p>Información del sistema</p>
-</div>
-
-
-<div class="card">
-<h3>🔍 Auditoría</h3>
-<p>Trazabilidad del sistema</p>
-</div>
-
-
-</div>
-
-
-<button>
 Cerrar sesión
+
 </button>
+
+</nav>
+  <header>
+    <h1>CampusLab</h1>
+    <p>Sistema de gestión de recursos académicos</p>
+  </header>
+
+
+  <section class="user-card">
+
+    <h2>Bienvenido</h2>
+
+    <p>
+      Usuario conectado
+    </p>
+
+    <strong>
+      {{usuario?.name}}
+    </strong>
+
+    <p>
+      {{usuario?.username}}
+    </p>
+
+  </section>
+
+
+
+  <div class="cards">
+
+
+    <div class="card">
+      <h3>📚 Catálogo</h3>
+      <p>
+        Gestión de recursos disponibles
+      </p>
+    </div>
+
+
+    <div class="card">
+      <h3>📅 Reservas</h3>
+      <p>
+        Solicitudes y aprobaciones
+      </p>
+    </div>
+
+
+    <div class="card">
+      <h3>💳 Pagos</h3>
+      <p>
+        Estado de transacciones
+      </p>
+    </div>
+
+
+    <div class="card">
+      <h3>🔍 Auditoría</h3>
+      <p>
+        Trazabilidad del sistema
+      </p>
+    </div>
+
+
+  </div>
 
 
 </div>

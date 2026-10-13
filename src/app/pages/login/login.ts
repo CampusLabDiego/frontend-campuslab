@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { MsalService } from '@azure/msal-angular';
-
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -10,68 +10,60 @@ import { MsalService } from '@azure/msal-angular';
 })
 export class Login implements OnInit {
 
-
-  usuario:any;
-
+  usuario: any;
 
   constructor(
-    private msalService: MsalService
-  ){}
+    private msalService: MsalService,
+    private router: Router
+  ) {}
 
-
-  ngOnInit(){
-
+  ngOnInit() {
 
     this.msalService.handleRedirectObservable()
       .subscribe({
 
-        next: (result)=>{
+        next: (result) => {
 
-          if(result){
+          if (result?.account) {
 
             this.msalService.instance
-            .setActiveAccount(result.account);
+              .setActiveAccount(result.account);
 
           }
 
-
           const account =
-          this.msalService.instance
-          .getActiveAccount();
+            this.msalService.instance.getActiveAccount();
 
+          if (account) {
 
-          this.usuario = account;
+            this.usuario = account;
 
+            console.log(
+              'Usuario autenticado:',
+              this.usuario
+            );
 
-          console.log(
-            "Usuario autenticado:",
-            this.usuario
-          );
+            this.router.navigate(['/dashboard']);
+
+          }
 
         },
 
-        error:(err)=>{
+        error: (err) => {
           console.error(err);
         }
 
       });
 
-
   }
 
+  login() {
 
-  login(){
+  this.msalService.loginRedirect({
+    scopes: ['User.Read'],
+    prompt: 'select_account'
+  });
 
-    this.msalService.loginRedirect();
-
-  }
-
-
-  logout(){
-
-    this.msalService.logoutRedirect();
-
-  }
-
+}
 
 }

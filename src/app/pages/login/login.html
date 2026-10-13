@@ -1,28 +1,38 @@
-<h1>CampusLab</h1>
+<div class="login-container">
 
-@if(usuario){
+  <div class="login-card">
 
-<h2>Sesión iniciada correctamente</h2>
+    <div class="logo">
+      <h1>CampusLab</h1>
+      <p>Gestión inteligente de recursos académicos</p>
+    </div>
 
-<p>
-Usuario:
-{{usuario.name}}
-</p>
 
-<p>
-Correo:
-{{usuario.username}}
-</p>
+    <div class="icon">
+      🎓
+    </div>
 
-<button (click)="logout()">
-Cerrar sesión
-</button>
 
-}
-@else {
+    <h2>Bienvenido</h2>
 
-<button (click)="login()">
-Ingresar con Microsoft
-</button>
+    <p class="description">
+      Ingresa con tu cuenta institucional para acceder al sistema.
+    </p>
 
-}
+
+    <button 
+      class="login-button"
+      (click)="login()">
+
+      <span>
+        🔐
+      </span>
+
+      Ingresar con Microsoft
+
+    </button>
+
+
+  </div>
+
+</div>
