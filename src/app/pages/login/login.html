@@ -1,0 +1,28 @@
+<h1>CampusLab</h1>
+
+@if(usuario){
+
+<h2>Sesión iniciada correctamente</h2>
+
+<p>
+Usuario:
+{{usuario.name}}
+</p>
+
+<p>
+Correo:
+{{usuario.username}}
+</p>
+
+<button (click)="logout()">
+Cerrar sesión
+</button>
+
+}
+@else {
+
+<button (click)="login()">
+Ingresar con Microsoft
+</button>
+
+}
