@@ -1,78 +1,94 @@
-
 <div class="container">
+
 <nav class="navbar">
 
-<button 
-class="logout"
-(click)="logout()">
-
+<button class="logout" (click)="logout()">
 Cerrar sesión
-
 </button>
 
 </nav>
-  <header>
-    <h1>CampusLab</h1>
-    <p>Sistema de gestión de recursos académicos</p>
-  </header>
+
+<header>
+
+<h1>CampusLab</h1>
+
+<p>
+Sistema de gestión de recursos académicos
+</p>
+
+</header>
 
 
-  <section class="user-card">
+<section class="user-card">
 
-    <h2>Bienvenido</h2>
+<h2>Bienvenido</h2>
 
-    <p>
-      Usuario conectado
-    </p>
+<p>
+Usuario conectado
+</p>
 
-    <strong>
-      {{usuario?.name}}
-    </strong>
+<strong>
+{{usuario?.name}}
+</strong>
 
-    <p>
-      {{usuario?.username}}
-    </p>
+<p>
+{{usuario?.username}}
+</p>
 
-  </section>
+<p>
+Rol:
+<strong>{{rol}}</strong>
+</p>
 
-
-
-  <div class="cards">
-
-
-    <div class="card">
-      <h3>📚 Catálogo</h3>
-      <p>
-        Gestión de recursos disponibles
-      </p>
-    </div>
+</section>
 
 
-    <div class="card">
-      <h3>📅 Reservas</h3>
-      <p>
-        Solicitudes y aprobaciones
-      </p>
-    </div>
+<div class="cards">
+
+<div class="card" routerLink="/bookings">
+
+<h3>📅 Reservas</h3>
+
+<p>
+Gestión de solicitudes y estados
+</p>
+
+</div>
 
 
-    <div class="card">
-      <h3>💳 Pagos</h3>
-      <p>
-        Estado de transacciones
-      </p>
-    </div>
+<div class="card" routerLink="/catalog">
+
+<h3>📚 Catálogo</h3>
+
+<p>
+Laboratorios, equipos e insumos
+</p>
+
+</div>
 
 
-    <div class="card">
-      <h3>🔍 Auditoría</h3>
-      <p>
-        Trazabilidad del sistema
-      </p>
-    </div>
+<div class="card" routerLink="/reports">
+
+<h3>📊 Reportería</h3>
+
+<p>
+Indicadores y ocupación
+</p>
+
+</div>
 
 
-  </div>
+<div class="card" routerLink="/audit">
 
+<h3>🔍 Auditoría</h3>
+
+<p>
+Timeline de eventos
+</p>
+
+</div>
+
+
+</div>
 
 </div>

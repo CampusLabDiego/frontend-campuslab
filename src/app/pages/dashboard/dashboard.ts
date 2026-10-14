@@ -1,51 +1,66 @@
-import { Component, OnInit } from '@angular/core';
+import { Component,OnInit } from '@angular/core';
 import { MsalService } from '@azure/msal-angular';
-import { Router } from '@angular/router';
+import { Router,RouterLink } from '@angular/router';
+
 @Component({
-  selector: 'app-dashboard',
-  imports: [],
-  templateUrl: './dashboard.html',
-  styleUrl: './dashboard.css'
+selector:'app-dashboard',
+imports:[RouterLink],
+templateUrl:'./dashboard.html',
+styleUrl:'./dashboard.css'
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit{
 
-  usuario: any;
+usuario:any;
+rol:string='';
 
-  constructor(
-    private msalService: MsalService,
-    private router: Router
-  ) {}
+constructor(
+private msalService:MsalService,
+private router:Router
+){}
 
-  ngOnInit() {
 
-    const accounts = this.msalService.instance.getAllAccounts();
+ngOnInit(){
 
-    if (accounts.length > 0) {
+const accounts =
+this.msalService.instance.getAllAccounts();
 
-      this.usuario = accounts[0];
 
-      this.msalService.instance.setActiveAccount(this.usuario);
+if(accounts.length>0){
 
-    } else {
+this.usuario=accounts[0];
 
-      window.location.href = '/login';
+this.msalService.instance
+.setActiveAccount(this.usuario);
 
-    }
 
-    console.log(
-      'Usuario dashboard:',
-      this.usuario
-    );
+this.rol =
+this.usuario.idTokenClaims?.['roles']?.[0]
+|| 'Sin rol';
 
-  }
+}
 
-logout() {
 
-  this.msalService.instance.clearCache();
+console.log(
+'Usuario dashboard:',
+this.usuario
+);
 
-  this.msalService.instance.setActiveAccount(null);
+console.log(
+'Rol:',
+this.rol
+);
 
-  this.router.navigate(['/login']);
+}
+
+
+logout(){
+
+this.msalService.instance.clearCache();
+
+this.msalService.instance
+.setActiveAccount(null);
+
+this.router.navigate(['/login']);
 
 }
 

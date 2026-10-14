@@ -1,0 +1,68 @@
+.page-header{
+
+display:flex;
+justify-content:space-between;
+align-items:center;
+
+margin-bottom:30px;
+
+}
+
+
+.brand h1{
+
+margin:0;
+
+font-size:35px;
+
+}
+
+
+.brand p{
+
+margin:5px 0;
+
+font-size:14px;
+
+}
+
+
+.actions{
+
+display:flex;
+gap:15px;
+
+}
+
+
+.actions button{
+
+border:none;
+
+padding:12px 22px;
+
+border-radius:25px;
+
+cursor:pointer;
+
+font-size:14px;
+
+}
+
+
+.logout{
+
+background:#ef4444;
+
+color:white;
+
+}
+
+
+.actions button:first-child{
+
+background:white;
+
+color:#111;
+
+}
