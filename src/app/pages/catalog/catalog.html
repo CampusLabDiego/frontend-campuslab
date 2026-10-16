@@ -1,28 +1,60 @@
 <div class="page-container">
+  <app-page-header></app-page-header>
 
-<app-page-header></app-page-header>
+  <section class="page-card">
+    <h1>📚 Catálogo</h1>
 
+    <p>Gestión de laboratorios, equipos e insumos disponibles</p>
 
-<section class="page-card">
+    <div class="toolbar">
+      <input
+        type="search"
+        placeholder="Buscar recurso..."
+        aria-label="Buscar recurso"
+        [(ngModel)]="busqueda"
+        (input)="filtrar()">
+    </div>
 
-<h1>📚 Catálogo</h1>
+    <div class="content-box">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
 
-<p>
-Gestión de laboratorios, equipos e insumos disponibles
-</p>
+        <tbody>
+          <tr *ngFor="let recurso of recursosPagina">
+            <td>{{ recurso.name }}</td>
+            <td>{{ recurso.type }}</td>
+            <td>{{ recurso.active ? 'Activo' : 'Inactivo' }}</td>
+          </tr>
+        </tbody>
+      </table>
 
+      <p *ngIf="recursosFiltrados.length === 0">
+        No hay recursos para mostrar.
+      </p>
 
-<div class="content-box">
+      <div class="pagination" *ngIf="recursosFiltrados.length > elementosPagina">
+        <button
+          type="button"
+          [disabled]="paginaActual === 1"
+          (click)="cambiarPagina(paginaActual - 1)">
+          Anterior
+        </button>
 
-<h3>Próximamente</h3>
+        <span>Página {{ paginaActual }}</span>
 
-<p>
-Aquí se visualizarán los recursos disponibles del sistema CampusLab.
-</p>
-
-</div>
-
-
-</section>
-
+        <button
+          type="button"
+          [disabled]="paginaActual * elementosPagina >= recursosFiltrados.length"
+          (click)="cambiarPagina(paginaActual + 1)">
+          Siguiente
+        </button>
+      </div>
+    </div>
+  </section>
 </div>

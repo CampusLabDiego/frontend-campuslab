@@ -1,17 +1,22 @@
-import { IPublicClientApplication, PublicClientApplication } from '@azure/msal-browser';
+import {
+  BrowserCacheLocation,
+  Configuration
+} from '@azure/msal-browser';
 
-export const msalConfig = {
+export const API_BASE_URL = 'http://localhost:8080';
+
+export const API_SCOPE =
+  'api://3bdd9813-1e51-4686-a89a-760ac0531de9/access_as_user';
+
+export const msalConfig: Configuration = {
   auth: {
     clientId: '3bdd9813-1e51-4686-a89a-760ac0531de9',
-    authority: 'https://login.microsoftonline.com/7d5727ec-99c0-4161-9e1a-194c51532c5b',
+    authority:
+      'https://login.microsoftonline.com/7d5727ec-99c0-4161-9e1a-194c51532c5b',
     redirectUri: 'http://localhost:4200',
-    postLogoutRedirectUri: 'http://localhost:4200/login'
+    postLogoutRedirectUri: 'http://localhost:4200'
   },
   cache: {
-    cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false
+    cacheLocation: BrowserCacheLocation.SessionStorage
   }
 };
-
-export const msalInstance: IPublicClientApplication =
-  new PublicClientApplication(msalConfig);
