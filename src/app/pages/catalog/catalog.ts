@@ -1,4 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  ChangeDetectorRef
+} from '@angular/core';
+
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -22,6 +28,7 @@ interface Recurso {
 export class Catalog implements OnInit {
 
   private readonly http = inject(HttpClient);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   recursos: Recurso[] = [];
   recursosFiltrados: Recurso[] = [];
@@ -37,7 +44,12 @@ export class Catalog implements OnInit {
       next: (data) => {
         this.recursos = data;
         this.filtrar();
-        console.log('Consulta de catálogo completada:', data.length);
+        this.cdr.markForCheck();
+
+        console.log(
+          'Consulta de catálogo completada:',
+          data.length
+        );
       },
       error: (error) => {
         console.error('Error al cargar catálogo:', error);
