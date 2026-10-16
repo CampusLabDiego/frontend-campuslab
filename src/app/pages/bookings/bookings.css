@@ -44,3 +44,110 @@ background:#f1f5f9;
 border-radius:15px;
 
 }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.toolbar input {
+  box-sizing: border-box;
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 13px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+  font: inherit;
+  font-size: 15px;
+}
+
+.toolbar input:focus-visible {
+  outline: 3px solid #bfdbfe;
+  border-color: #2563eb;
+}
+
+.btn-primary {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+th,
+td {
+  padding: 14px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+th {
+  color: #334155;
+  white-space: nowrap;
+}
+
+td {
+  color: #475569;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.estado {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.mensaje {
+  padding: 20px 0;
+  text-align: center;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.contador {
+  margin: 0 0 14px;
+  color: #475569;
+  font-size: 14px;
+}
