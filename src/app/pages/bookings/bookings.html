@@ -17,23 +17,33 @@
       <button
         type="button"
         class="btn-primary"
-        [disabled]="cargando()"
+        [disabled]="cargando() || actualizando() !== null"
         (click)="cargarReservas()">
-        Actualizar
+        {{ cargando() ? 'Cargando...' : 'Actualizar' }}
       </button>
     </div>
 
-    <div class="content-box" aria-live="polite">
+    <p *ngIf="mensaje()" class="exito" role="status">
+      {{ mensaje() }}
+    </p>
+
+    <p *ngIf="error()" class="error" role="alert">
+      {{ error() }}
+    </p>
+
+    <div
+      class="content-box"
+      aria-live="polite"
+      [attr.aria-busy]="cargando() || actualizando() !== null">
+
       <p *ngIf="cargando()" class="mensaje">
         Cargando reservas...
       </p>
 
-      <p *ngIf="error()" class="mensaje error" role="alert">
-        {{ error() }}
-      </p>
-
-      <ng-container *ngIf="!cargando() && !error()">
-        <p *ngIf="reservas().length === 0" class="mensaje">
+      <ng-container *ngIf="!cargando()">
+        <p
+          *ngIf="reservas().length === 0 && !error()"
+          class="mensaje">
           Todavía no hay reservas registradas.
         </p>
 
@@ -42,17 +52,25 @@
             Reservas encontradas: {{ reservasFiltradas().length }}
           </p>
 
-          <div class="table-wrapper">
+          <div
+            class="table-wrapper"
+            tabindex="0"
+            role="region"
+            aria-label="Listado de reservas">
+
             <table>
               <thead>
                 <tr>
-                  <th>N.º</th>
-                  <th>Recurso</th>
-                  <th>Usuario</th>
-                  <th>Inicio</th>
-                  <th>Término</th>
-                  <th>Cantidad</th>
-                  <th>Estado</th>
+                  <th scope="col">N.º</th>
+                  <th scope="col">Recurso</th>
+                  <th scope="col">Usuario</th>
+                  <th scope="col">Inicio</th>
+                  <th scope="col">Término</th>
+                  <th scope="col">Cantidad</th>
+                  <th scope="col">Estado</th>
+                  <th *ngIf="puedeGestionar" scope="col">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
 
@@ -61,17 +79,48 @@
                   <td>#{{ reserva.id }}</td>
                   <td>{{ reserva.resourceName }}</td>
                   <td>{{ reserva.userEmail }}</td>
-                  <td>
+
+                  <td class="fecha">
                     {{ reserva.startDateTime | date:'dd/MM/yyyy HH:mm' }}
                   </td>
-                  <td>
+
+                  <td class="fecha">
                     {{ reserva.endDateTime | date:'dd/MM/yyyy HH:mm' }}
                   </td>
+
                   <td>{{ reserva.quantity }}</td>
+
                   <td>
                     <span class="estado">
                       {{ mostrarEstado(reserva.status) }}
                     </span>
+                  </td>
+
+                  <td *ngIf="puedeGestionar">
+                    <div class="acciones">
+                      <button
+                        *ngFor="let estado of estadosDisponibles(reserva.status)"
+                        type="button"
+                        class="btn-estado"
+                        [class.btn-cancelar]="estado === 'CANCELADA'"
+                        [disabled]="actualizando() !== null"
+                        [attr.aria-label]="nombreAccion(estado) + ' reserva ' + reserva.id"
+                        (click)="cambiarEstado(reserva, estado)">
+                        {{ nombreAccion(estado) }}
+                      </button>
+
+                      <span
+                        *ngIf="actualizando() === reserva.id"
+                        class="texto-accion">
+                        Guardando...
+                      </span>
+
+                      <span
+                        *ngIf="estadosDisponibles(reserva.status).length === 0"
+                        class="texto-accion">
+                        Sin acciones disponibles
+                      </span>
+                    </div>
                   </td>
                 </tr>
               </tbody>

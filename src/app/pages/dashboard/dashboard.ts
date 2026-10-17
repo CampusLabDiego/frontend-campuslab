@@ -1,67 +1,48 @@
-import { Component,OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { MsalService } from '@azure/msal-angular';
-import { Router,RouterLink } from '@angular/router';
+import { AccountInfo } from '@azure/msal-browser';
 
 @Component({
-selector:'app-dashboard',
-imports:[RouterLink],
-templateUrl:'./dashboard.html',
-styleUrl:'./dashboard.css'
+  selector: 'app-dashboard',
+  imports: [RouterLink],
+  templateUrl: './dashboard.html',
+  styleUrl: './dashboard.css'
 })
-export class Dashboard implements OnInit{
+export class Dashboard implements OnInit {
 
-usuario:any;
-rol:string='';
+  usuario: AccountInfo | null = null;
+  rol = '';
 
-constructor(
-private msalService:MsalService,
-private router:Router
-){}
+  constructor(
+    private msalService: MsalService,
+    private router: Router
+  ) {}
 
+  ngOnInit(): void {
+    // Usa la cuenta seleccionada durante el login.
+    // No la reemplaza por otra cuenta guardada.
+    this.usuario =
+      this.msalService.instance.getActiveAccount();
 
-ngOnInit(){
+    if (!this.usuario) {
+      void this.router.navigateByUrl('/login');
+      return;
+    }
 
-const accounts =
-this.msalService.instance.getAllAccounts();
+    const roles = this.usuario.idTokenClaims?.['roles'];
 
+    this.rol =
+      Array.isArray(roles) && roles.length > 0
+        ? roles.join(', ')
+        : 'Sin rol';
+  }
 
-if(accounts.length>0){
-
-this.usuario=accounts[0];
-
-this.msalService.instance
-.setActiveAccount(this.usuario);
-
-
-this.rol =
-this.usuario.idTokenClaims?.['roles']?.[0]
-|| 'Sin rol';
-
-}
-
-
-console.log(
-'Usuario dashboard:',
-this.usuario
-);
-
-console.log(
-'Rol:',
-this.rol
-);
-
-}
-
-
-logout(){
-
-this.msalService.instance.clearCache();
-
-this.msalService.instance
-.setActiveAccount(null);
-
-this.router.navigate(['/login']);
-
-}
-
+  logout(): void {
+    this.msalService.logoutRedirect().subscribe({
+      error: error => {
+        console.error('Error al cerrar sesión:', error);
+      }
+    });
+  }
 }

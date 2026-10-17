@@ -28,17 +28,28 @@ export class Login implements OnInit {
 
       const instance = this.msalService.instance;
 
-      const account =
-        result?.account ??
-        instance.getActiveAccount() ??
-        instance.getAllAccounts()[0];
+      // Prioriza la cuenta que acaba de iniciar sesión.
+      let account =
+        result?.account ?? instance.getActiveAccount();
+
+      // Solo recupera una cuenta guardada si no hay ambigüedad.
+      if (!account) {
+        const accounts = instance.getAllAccounts();
+
+        if (accounts.length === 1) {
+          account = accounts[0];
+        }
+      }
 
       if (account) {
         instance.setActiveAccount(account);
         await this.router.navigateByUrl('/dashboard');
       }
     } catch (error) {
-      console.error('Error al procesar el inicio de sesión:', error);
+      console.error(
+        'Error al procesar el inicio de sesión:',
+        error
+      );
     } finally {
       this.procesando = false;
     }
@@ -49,11 +60,14 @@ export class Login implements OnInit {
       return;
     }
 
+    this.procesando = true;
+
     this.msalService.loginRedirect({
       scopes: [API_SCOPE],
       prompt: 'select_account'
     }).subscribe({
-      error: (error) => {
+      error: error => {
+        this.procesando = false;
         console.error('Error al iniciar sesión:', error);
       }
     });
