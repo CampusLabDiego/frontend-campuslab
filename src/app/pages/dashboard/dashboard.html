@@ -1,94 +1,86 @@
 <div class="container">
 
-<nav class="navbar">
+  <nav class="navbar">
+    <button class="logout" (click)="logout()">
+      Cerrar sesión
+    </button>
+  </nav>
 
-<button class="logout" (click)="logout()">
-Cerrar sesión
-</button>
+  <header>
+    <h1>CampusLab</h1>
 
-</nav>
+    <p>
+      Sistema de gestión de recursos académicos
+    </p>
+  </header>
 
-<header>
+  <section class="user-card">
+    <h2>Bienvenido</h2>
 
-<h1>CampusLab</h1>
+    <p>Usuario conectado</p>
 
-<p>
-Sistema de gestión de recursos académicos
-</p>
+    <strong>
+      {{ usuario?.name }}
+    </strong>
 
-</header>
+    <p>
+      {{ usuario?.username }}
+    </p>
 
+    <p>
+      Rol:
+      <strong>{{ rol }}</strong>
+    </p>
 
-<section class="user-card">
+    @if (rol === 'Sin rol') {
+      <p>
+        Tu cuenta todavía no tiene un rol asignado.
+      </p>
+    }
+  </section>
 
-<h2>Bienvenido</h2>
+  <div class="cards">
 
-<p>
-Usuario conectado
-</p>
+    @if (puedeVerReservas) {
+      <div class="card" routerLink="/bookings">
+        <h3>📅 Reservas</h3>
 
-<strong>
-{{usuario?.name}}
-</strong>
+        <p>
+          Gestión de solicitudes y estados
+        </p>
+      </div>
+    }
 
-<p>
-{{usuario?.username}}
-</p>
+    @if (puedeVerCatalogo) {
+      <div class="card" routerLink="/catalog">
+        <h3>📚 Catálogo</h3>
 
-<p>
-Rol:
-<strong>{{rol}}</strong>
-</p>
+        <p>
+          Laboratorios, equipos e insumos
+        </p>
+      </div>
+    }
 
-</section>
+    @if (puedeVerReporteria) {
+      <div class="card" routerLink="/reports">
+        <h3>📊 Reportería</h3>
 
+        <p>
+          Indicadores y ocupación
+        </p>
+      </div>
+    }
 
-<div class="cards">
+    @if (puedeVerAuditoria) {
+      <div class="card" routerLink="/audit">
+        <h3>🔍 Auditoría</h3>
 
-<div class="card" routerLink="/bookings">
+        <p>
+          Timeline de eventos
+        </p>
+      </div>
+    }
 
-<h3>📅 Reservas</h3>
-
-<p>
-Gestión de solicitudes y estados
-</p>
-
-</div>
-
-
-<div class="card" routerLink="/catalog">
-
-<h3>📚 Catálogo</h3>
-
-<p>
-Laboratorios, equipos e insumos
-</p>
-
-</div>
-
-
-<div class="card" routerLink="/reports">
-
-<h3>📊 Reportería</h3>
-
-<p>
-Indicadores y ocupación
-</p>
-
-</div>
-
-
-<div class="card" routerLink="/audit">
-
-<h3>🔍 Auditoría</h3>
-
-<p>
-Timeline de eventos
-</p>
-
-</div>
-
-
-</div>
+  </div>
 
 </div>

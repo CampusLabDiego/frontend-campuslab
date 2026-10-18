@@ -3,6 +3,12 @@ import { Router, RouterLink } from '@angular/router';
 import { MsalService } from '@azure/msal-angular';
 import { AccountInfo } from '@azure/msal-browser';
 
+import {
+  obtenerRoles,
+  tieneAlgunRol,
+  ROLES_POR_MODULO
+} from '../../core/auth/role.guard';
+
 @Component({
   selector: 'app-dashboard',
   imports: [RouterLink],
@@ -20,8 +26,6 @@ export class Dashboard implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Usa la cuenta seleccionada durante el login.
-    // No la reemplaza por otra cuenta guardada.
     this.usuario =
       this.msalService.instance.getActiveAccount();
 
@@ -30,12 +34,39 @@ export class Dashboard implements OnInit {
       return;
     }
 
-    const roles = this.usuario.idTokenClaims?.['roles'];
+    const roles = obtenerRoles(this.usuario);
 
-    this.rol =
-      Array.isArray(roles) && roles.length > 0
-        ? roles.join(', ')
-        : 'Sin rol';
+    this.rol = roles.length > 0
+      ? roles.join(', ')
+      : 'Sin rol';
+  }
+
+  get puedeVerReservas(): boolean {
+    return tieneAlgunRol(
+      this.usuario,
+      ROLES_POR_MODULO.bookings
+    );
+  }
+
+  get puedeVerCatalogo(): boolean {
+    return tieneAlgunRol(
+      this.usuario,
+      ROLES_POR_MODULO.catalog
+    );
+  }
+
+  get puedeVerReporteria(): boolean {
+    return tieneAlgunRol(
+      this.usuario,
+      ROLES_POR_MODULO.reports
+    );
+  }
+
+  get puedeVerAuditoria(): boolean {
+    return tieneAlgunRol(
+      this.usuario,
+      ROLES_POR_MODULO.audit
+    );
   }
 
   logout(): void {

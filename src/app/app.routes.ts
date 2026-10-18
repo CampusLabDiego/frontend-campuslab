@@ -1,6 +1,11 @@
 import { Routes } from '@angular/router';
 import { MsalGuard } from '@azure/msal-angular';
 
+import {
+  roleGuard,
+  ROLES_POR_MODULO
+} from './core/auth/role.guard';
+
 import { Login } from './pages/login/login';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { Bookings } from './pages/bookings/bookings';
@@ -21,22 +26,34 @@ export const routes: Routes = [
   {
     path: 'bookings',
     component: Bookings,
-    canActivate: [MsalGuard]
+    canActivate: [MsalGuard, roleGuard],
+    data: {
+      roles: ROLES_POR_MODULO.bookings
+    }
   },
   {
     path: 'catalog',
     component: Catalog,
-    canActivate: [MsalGuard]
+    canActivate: [MsalGuard, roleGuard],
+    data: {
+      roles: ROLES_POR_MODULO.catalog
+    }
   },
   {
     path: 'reports',
     component: Reports,
-    canActivate: [MsalGuard]
+    canActivate: [MsalGuard, roleGuard],
+    data: {
+      roles: ROLES_POR_MODULO.reports
+    }
   },
   {
     path: 'audit',
     component: Audit,
-    canActivate: [MsalGuard]
+    canActivate: [MsalGuard, roleGuard],
+    data: {
+      roles: ROLES_POR_MODULO.audit
+    }
   },
   {
     path: '',
