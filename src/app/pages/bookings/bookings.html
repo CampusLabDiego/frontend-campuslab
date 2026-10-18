@@ -17,9 +17,18 @@
       <button
         type="button"
         class="btn-primary"
-        [disabled]="cargando() || actualizando() !== null"
+        [disabled]="ocupado()"
         (click)="cargarReservas()">
         {{ cargando() ? 'Cargando...' : 'Actualizar' }}
+      </button>
+
+      <button
+        *ngIf="puedeCrear"
+        type="button"
+        class="btn-primary"
+        [disabled]="ocupado() || mostrarFormulario()"
+        (click)="abrirFormulario()">
+        Nueva reserva
       </button>
     </div>
 
@@ -30,6 +39,192 @@
     <p *ngIf="error()" class="error" role="alert">
       {{ error() }}
     </p>
+
+    <section
+      *ngIf="mostrarFormulario() && puedeCrear"
+      class="reservation-form"
+      aria-labelledby="titulo-reserva">
+
+      <h2 id="titulo-reserva">Nueva reserva</h2>
+
+      <p class="ayuda">
+        Selecciona un recurso y el horario en que lo necesitas.
+        La solicitud quedará pendiente de aprobación.
+      </p>
+
+      <p class="ayuda">
+        Ingresa las horas según el horario local de tu equipo.
+      </p>
+
+      <p
+        *ngIf="errorFormulario()"
+        class="error"
+        role="alert">
+        {{ errorFormulario() }}
+      </p>
+
+      <p *ngIf="cargandoRecursos()" class="ayuda" role="status">
+        Cargando recursos...
+      </p>
+
+      <button
+        type="button"
+        class="btn-secondary"
+        [disabled]="ocupado()"
+        (click)="cargarRecursos()">
+        Actualizar recursos
+      </button>
+
+      <p
+        *ngIf="
+          !cargandoRecursos()
+          && recursos().length === 0
+          && !errorFormulario()
+        "
+        class="ayuda">
+        No hay recursos activos en el catálogo.
+      </p>
+
+      <form
+        #reservaForm="ngForm"
+        (ngSubmit)="crearReserva(reservaForm)">
+
+        <fieldset
+          [disabled]="
+            ocupado() || recursos().length === 0
+          ">
+
+          <div class="form-grid">
+
+            <div class="campo ancho-completo">
+              <label for="recurso">Recurso *</label>
+
+              <select
+                id="recurso"
+                name="recurso"
+                required
+                [(ngModel)]="formulario.resourceId"
+                (ngModelChange)="seleccionarRecurso()">
+
+                <option [ngValue]="null" disabled>
+                  Selecciona un recurso
+                </option>
+
+                <option
+                  *ngFor="let recurso of recursos()"
+                  [ngValue]="recurso.id"
+                  [disabled]="
+                    recurso.availableStock !== null
+                    && recurso.availableStock <= 0
+                  ">
+                  {{ recurso.name }} — {{ recurso.type }}
+                </option>
+              </select>
+            </div>
+
+            <div
+              *ngIf="recursoSeleccionado as recurso"
+              class="resource-info ancho-completo">
+
+              <p>
+                <strong>Ubicación:</strong>
+                {{ recurso.location || 'No informada' }}
+              </p>
+
+              <p>
+                <strong>Capacidad:</strong>
+                {{ recurso.capacity ?? 'No informada' }}
+              </p>
+
+              <p>
+                <strong>Stock disponible informado:</strong>
+                {{ recurso.availableStock ?? 'No informado' }}
+              </p>
+
+              <p *ngIf="recurso.type === 'LABORATORIO'">
+                Para un laboratorio, la cantidad es 1.
+                La capacidad indica cuántas personas admite.
+              </p>
+            </div>
+
+            <div class="campo">
+              <label for="inicio">Inicio *</label>
+
+              <input
+                id="inicio"
+                name="inicio"
+                type="datetime-local"
+                required
+                [min]="fechaMinima"
+                [(ngModel)]="formulario.startDateTime">
+            </div>
+
+            <div class="campo">
+              <label for="termino">Término *</label>
+
+              <input
+                id="termino"
+                name="termino"
+                type="datetime-local"
+                required
+                [min]="formulario.startDateTime || fechaMinima"
+                [(ngModel)]="formulario.endDateTime">
+            </div>
+
+            <div class="campo">
+              <label for="cantidad">Cantidad *</label>
+
+              <input
+                id="cantidad"
+                name="cantidad"
+                type="number"
+                required
+                min="1"
+                step="1"
+                [attr.max]="cantidadMaxima"
+                [readonly]="
+                  recursoSeleccionado?.type === 'LABORATORIO'
+                "
+                [(ngModel)]="formulario.quantity">
+            </div>
+
+            <div class="campo ancho-completo">
+              <label for="motivo">Motivo *</label>
+
+              <textarea
+                id="motivo"
+                name="motivo"
+                rows="3"
+                required
+                maxlength="255"
+                placeholder="Describe para qué necesitas el recurso..."
+                [(ngModel)]="formulario.purpose">
+              </textarea>
+            </div>
+
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="
+              ocupado() || recursos().length === 0
+            ">
+            {{ guardando() ? 'Enviando...' : 'Solicitar reserva' }}
+          </button>
+
+          <button
+            type="button"
+            class="btn-secondary"
+            [disabled]="guardando() || cargandoRecursos()"
+            (click)="cancelarFormulario()">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </section>
 
     <div
       class="content-box"
@@ -67,6 +262,7 @@
                   <th scope="col">Inicio</th>
                   <th scope="col">Término</th>
                   <th scope="col">Cantidad</th>
+                  <th scope="col">Motivo</th>
                   <th scope="col">Estado</th>
                   <th *ngIf="puedeGestionar" scope="col">
                     Acciones
@@ -81,14 +277,21 @@
                   <td>{{ reserva.userEmail }}</td>
 
                   <td class="fecha">
-                    {{ reserva.startDateTime | date:'dd/MM/yyyy HH:mm' }}
+                    {{
+                      fechaParaVista(reserva.startDateTime)
+                        | date:'dd/MM/yyyy HH:mm'
+                    }}
                   </td>
 
                   <td class="fecha">
-                    {{ reserva.endDateTime | date:'dd/MM/yyyy HH:mm' }}
+                    {{
+                      fechaParaVista(reserva.endDateTime)
+                        | date:'dd/MM/yyyy HH:mm'
+                    }}
                   </td>
 
                   <td>{{ reserva.quantity }}</td>
+                  <td class="motivo">{{ reserva.purpose }}</td>
 
                   <td>
                     <span class="estado">
@@ -99,12 +302,18 @@
                   <td *ngIf="puedeGestionar">
                     <div class="acciones">
                       <button
-                        *ngFor="let estado of estadosDisponibles(reserva.status)"
+                        *ngFor="
+                          let estado of estadosDisponibles(reserva.status)
+                        "
                         type="button"
                         class="btn-estado"
                         [class.btn-cancelar]="estado === 'CANCELADA'"
-                        [disabled]="actualizando() !== null"
-                        [attr.aria-label]="nombreAccion(estado) + ' reserva ' + reserva.id"
+                        [disabled]="ocupado()"
+                        [attr.aria-label]="
+                          nombreAccion(estado)
+                          + ' reserva '
+                          + reserva.id
+                        "
                         (click)="cambiarEstado(reserva, estado)">
                         {{ nombreAccion(estado) }}
                       </button>
@@ -116,7 +325,9 @@
                       </span>
 
                       <span
-                        *ngIf="estadosDisponibles(reserva.status).length === 0"
+                        *ngIf="
+                          estadosDisponibles(reserva.status).length === 0
+                        "
                         class="texto-accion">
                         Sin acciones disponibles
                       </span>
