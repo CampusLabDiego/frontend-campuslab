@@ -9,52 +9,291 @@
     <div class="toolbar">
       <input
         type="search"
-        placeholder="Buscar recurso..."
+        placeholder="Buscar por nombre, tipo o ubicación..."
         aria-label="Buscar recurso"
         [(ngModel)]="busqueda"
-        (input)="filtrar()">
+        (ngModelChange)="filtrar()">
+
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="ocupado"
+        (click)="cargarRecursos()">
+        {{ cargando ? 'Cargando...' : 'Actualizar' }}
+      </button>
+
+      <button
+        *ngIf="puedeGestionar"
+        type="button"
+        class="btn-primary"
+        [disabled]="ocupado"
+        (click)="nuevoRecurso()">
+        Nuevo recurso
+      </button>
     </div>
 
-    <div class="content-box">
-      <table>
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Tipo</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
+    <p *ngIf="mensaje" class="exito" role="status">
+      {{ mensaje }}
+    </p>
 
-        <tbody>
-          <tr *ngFor="let recurso of recursosPagina">
-            <td>{{ recurso.name }}</td>
-            <td>{{ recurso.type }}</td>
-            <td>{{ recurso.active ? 'Activo' : 'Inactivo' }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <p *ngIf="error" class="error" role="alert">
+      {{ error }}
+    </p>
 
-      <p *ngIf="recursosFiltrados.length === 0">
-        No hay recursos para mostrar.
+    <form
+      *ngIf="mostrarFormulario && puedeGestionar"
+      #recursoForm="ngForm"
+      class="resource-form"
+      (ngSubmit)="guardarRecurso(recursoForm)">
+
+      <h2>
+        {{ editandoId !== null ? 'Editar recurso' : 'Nuevo recurso' }}
+      </h2>
+
+      <p class="ayuda">
+        Nombre, tipo, capacidad y stocks son obligatorios.
       </p>
 
-      <div class="pagination" *ngIf="recursosFiltrados.length > elementosPagina">
+      <fieldset [disabled]="guardando">
+        <div class="form-grid">
+          <div class="campo">
+            <label for="nombre">Nombre *</label>
+            <input
+              id="nombre"
+              name="nombre"
+              type="text"
+              required
+              maxlength="255"
+              [(ngModel)]="formulario.name">
+          </div>
+
+          <div class="campo">
+            <label for="tipo">Tipo *</label>
+            <select
+              id="tipo"
+              name="tipo"
+              required
+              [(ngModel)]="formulario.type">
+              <option
+                *ngFor="let tipo of tipos"
+                [value]="tipo">
+                {{ tipo }}
+              </option>
+            </select>
+          </div>
+
+          <div class="campo ancho-completo">
+            <label for="descripcion">Descripción</label>
+            <textarea
+              id="descripcion"
+              name="descripcion"
+              rows="3"
+              maxlength="255"
+              [(ngModel)]="formulario.description">
+            </textarea>
+          </div>
+
+          <div class="campo">
+            <label for="capacidad">Capacidad *</label>
+            <input
+              id="capacidad"
+              name="capacidad"
+              type="number"
+              required
+              min="0"
+              step="1"
+              [(ngModel)]="formulario.capacity">
+          </div>
+
+          <div class="campo">
+            <label for="ubicacion">Ubicación</label>
+            <input
+              id="ubicacion"
+              name="ubicacion"
+              type="text"
+              maxlength="255"
+              [(ngModel)]="formulario.location">
+          </div>
+
+          <div class="campo">
+            <label for="stock">Stock total *</label>
+            <input
+              id="stock"
+              name="stock"
+              type="number"
+              required
+              min="0"
+              step="1"
+              [(ngModel)]="formulario.stock">
+          </div>
+
+          <div class="campo">
+            <label for="disponible">Stock disponible *</label>
+            <input
+              id="disponible"
+              name="disponible"
+              type="number"
+              required
+              min="0"
+              step="1"
+              [(ngModel)]="formulario.availableStock">
+          </div>
+
+          <label class="checkbox-label ancho-completo">
+            <input
+              name="activo"
+              type="checkbox"
+              [(ngModel)]="formulario.active">
+            Activo
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
         <button
-          type="button"
-          [disabled]="paginaActual === 1"
-          (click)="cambiarPagina(paginaActual - 1)">
-          Anterior
+          type="submit"
+          class="btn-primary"
+          [disabled]="ocupado">
+          {{ guardando ? 'Guardando...' : 'Guardar recurso' }}
         </button>
 
-        <span>Página {{ paginaActual }}</span>
-
         <button
           type="button"
-          [disabled]="paginaActual * elementosPagina >= recursosFiltrados.length"
-          (click)="cambiarPagina(paginaActual + 1)">
-          Siguiente
+          class="btn-secondary"
+          [disabled]="guardando"
+          (click)="cancelarFormulario()">
+          Cancelar
         </button>
       </div>
+    </form>
+
+    <div
+      class="content-box"
+      aria-live="polite"
+      [attr.aria-busy]="ocupado">
+
+      <p *ngIf="cargando" class="mensaje">
+        Cargando catálogo...
+      </p>
+
+      <ng-container *ngIf="!cargando">
+
+        <ng-container *ngIf="recursosFiltrados.length > 0">
+          <p class="contador">
+            Recursos encontrados: {{ recursosFiltrados.length }}
+          </p>
+
+          <div
+            class="table-wrapper"
+            tabindex="0"
+            role="region"
+            aria-label="Listado de recursos">
+
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Ubicación</th>
+                  <th scope="col">Capacidad</th>
+                  <th scope="col">Stock total</th>
+                  <th scope="col">Disponible</th>
+                  <th scope="col">Estado</th>
+                  <th *ngIf="puedeGestionar" scope="col">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr *ngFor="let recurso of recursosPagina">
+                  <td>
+                    <strong>{{ recurso.name }}</strong>
+                    <small *ngIf="recurso.description">
+                      {{ recurso.description }}
+                    </small>
+                  </td>
+
+                  <td>{{ recurso.type }}</td>
+                  <td>{{ recurso.location || '—' }}</td>
+                  <td>{{ recurso.capacity ?? '—' }}</td>
+                  <td>{{ recurso.stock ?? '—' }}</td>
+                  <td>{{ recurso.availableStock ?? '—' }}</td>
+
+                  <td>
+                    <span
+                      class="estado"
+                      [class.inactivo]="!recurso.active">
+                      {{ recurso.active ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+
+                  <td *ngIf="puedeGestionar">
+                    <div class="acciones">
+                      <button
+                        type="button"
+                        class="btn-small btn-primary"
+                        [disabled]="ocupado"
+                        [attr.aria-label]="'Editar ' + recurso.name"
+                        (click)="editarRecurso(recurso)">
+                        Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        class="btn-small btn-danger"
+                        [disabled]="ocupado"
+                        [attr.aria-label]="'Eliminar ' + recurso.name"
+                        (click)="eliminarRecurso(recurso)">
+                        {{
+                          eliminandoId === recurso.id
+                            ? 'Eliminando...'
+                            : 'Eliminar'
+                        }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+
+        <p
+          *ngIf="recursosFiltrados.length === 0 && !error"
+          class="mensaje">
+          {{
+            recursos.length === 0
+              ? 'Todavía no hay recursos registrados.'
+              : 'No hay recursos que coincidan con la búsqueda.'
+          }}
+        </p>
+
+        <div
+          class="pagination"
+          *ngIf="totalPaginas > 1">
+
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="paginaActual === 1 || ocupado"
+            (click)="cambiarPagina(paginaActual - 1)">
+            Anterior
+          </button>
+
+          <span>
+            Página {{ paginaActual }} de {{ totalPaginas }}
+          </span>
+
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="paginaActual === totalPaginas || ocupado"
+            (click)="cambiarPagina(paginaActual + 1)">
+            Siguiente
+          </button>
+        </div>
+      </ng-container>
     </div>
   </section>
 </div>
