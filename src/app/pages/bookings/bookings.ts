@@ -8,10 +8,12 @@ import {
 
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
+
 import {
   HttpClient,
   HttpErrorResponse
 } from '@angular/common/http';
+
 import { MsalService } from '@azure/msal-angular';
 
 import { PageHeader } from '../../shared/page-header/page-header';
@@ -20,6 +22,7 @@ import { tieneAlgunRol } from '../../core/auth/role.guard';
 
 interface Reserva {
   id: number;
+  userId: string;
   userEmail: string;
   resourceName: string;
   startDateTime: string;
@@ -27,6 +30,7 @@ interface Reserva {
   purpose: string;
   quantity: number;
   status: string;
+  pendingStatus?: string | null;
 }
 
 interface Recurso {
@@ -117,6 +121,17 @@ export class Bookings implements OnInit {
     );
   }
 
+  get esCliente(): boolean {
+    return tieneAlgunRol(
+      this.msal.instance.getActiveAccount(),
+      ['Cliente']
+    );
+  }
+
+  get mostrarAcciones(): boolean {
+    return this.puedeGestionar || this.esCliente;
+  }
+
   get recursoSeleccionado(): Recurso | undefined {
     return this.recursos().find(
       recurso => recurso.id === this.formulario.resourceId
@@ -130,8 +145,10 @@ export class Bookings implements OnInit {
       return null;
     }
 
-    if (recurso.availableStock !== null
-        && recurso.availableStock <= 0) {
+    if (
+      recurso.availableStock !== null
+      && recurso.availableStock <= 0
+    ) {
       return 0;
     }
 
@@ -342,8 +359,6 @@ export class Bookings implements OnInit {
       return;
     }
 
-    // El backend actual recibe LocalDateTime sin zona.
-    // Usamos UTC como convención para los valores enviados.
     const payload: ReservaRequest = {
       resourceId: recurso.id,
       resourceName: recurso.name,
@@ -384,6 +399,113 @@ export class Bookings implements OnInit {
           this.mensajeError(
             error,
             'No se pudo registrar la reserva. Revisa los datos antes de reintentar.'
+          )
+        );
+      }
+    });
+  }
+
+  puedeConfirmarLlegada(reserva: Reserva): boolean {
+    const cuenta = this.msal.instance.getActiveAccount();
+    const propietario = cuenta?.idTokenClaims?.['oid'];
+
+    return this.esCliente
+      && typeof propietario === 'string'
+      && reserva.userId === propietario
+      && reserva.status === 'EN_PREPARACION'
+      && !reserva.pendingStatus;
+  }
+
+  confirmarLlegada(reserva: Reserva): void {
+    if (
+      !this.puedeConfirmarLlegada(reserva)
+      || this.ocupado()
+    ) {
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `¿Confirmar tu llegada para la reserva #${reserva.id}?`
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    this.actualizando.set(reserva.id);
+    this.error.set('');
+    this.mensaje.set('');
+
+    this.http.post<Reserva>(
+      `${API_BASE_URL}/api/bookings/${reserva.id}/arrival`,
+      null
+    ).subscribe({
+      next: actualizada => {
+        this.actualizarReservaEnLista(actualizada);
+        this.actualizando.set(null);
+
+        this.mensaje.set(
+          `Llegada confirmada. La reserva #${actualizada.id} está EN USO.`
+        );
+      },
+      error: (error: HttpErrorResponse) => {
+        this.actualizando.set(null);
+
+        this.error.set(
+          this.mensajeError(
+            error,
+            'No se pudo confirmar la llegada. Actualiza la reserva antes de reintentar.'
+          )
+        );
+      }
+    });
+  }
+
+  sincronizarStock(reserva: Reserva): void {
+    if (
+      !this.puedeGestionar
+      || this.ocupado()
+      || !['APROBADA', 'EN_PREPARACION', 'EN_USO']
+        .includes(reserva.status)
+    ) {
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `¿Sincronizar el stock de la reserva #${reserva.id}?\n\n`
+      + 'Si nunca tuvo un descuento registrado, '
+      + 'se comprometerán sus unidades. '
+      + 'Si ya está sincronizada, el saldo se conservará.'
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    this.actualizando.set(reserva.id);
+    this.error.set('');
+    this.mensaje.set('');
+
+    this.http.post<Reserva>(
+      `${API_BASE_URL}/api/bookings/${reserva.id}/stock/reconcile`,
+      null
+    ).subscribe({
+      next: actualizada => {
+        this.actualizarReservaEnLista(actualizada);
+        this.actualizando.set(null);
+
+        this.mensaje.set(
+          `Stock de la reserva #${actualizada.id} sincronizado. `
+          + 'Actualiza el catálogo para ver el saldo.'
+        );
+      },
+      error: (error: HttpErrorResponse) => {
+        this.actualizando.set(null);
+
+        this.error.set(
+          this.mensajeError(
+            error,
+            'No se pudo sincronizar el stock. Revisa la reserva y el catálogo.'
           )
         );
       }
@@ -437,12 +559,7 @@ export class Bookings implements OnInit {
       { params: { status: estado } }
     ).subscribe({
       next: actualizada => {
-        this.reservas.update(reservas =>
-          reservas.map(actual =>
-            actual.id === actualizada.id ? actualizada : actual
-          )
-        );
-
+        this.actualizarReservaEnLista(actualizada);
         this.actualizando.set(null);
 
         this.mensaje.set(
@@ -464,7 +581,6 @@ export class Bookings implements OnInit {
   }
 
   fechaParaVista(fecha: string): string {
-    // Si la respuesta ya incluye zona, la conservamos.
     if (/(Z|[+-]\d{2}:\d{2})$/i.test(fecha)) {
       return fecha;
     }
@@ -498,6 +614,14 @@ export class Bookings implements OnInit {
     }
   }
 
+  private actualizarReservaEnLista(actualizada: Reserva): void {
+    this.reservas.update(reservas =>
+      reservas.map(actual =>
+        actual.id === actualizada.id ? actualizada : actual
+      )
+    );
+  }
+
   private formularioVacio(): FormularioReserva {
     return {
       resourceId: null,
@@ -512,6 +636,13 @@ export class Bookings implements OnInit {
     error: HttpErrorResponse,
     predeterminado: string
   ): string {
+    if (
+      [400, 409, 503].includes(error.status)
+      && typeof error.error?.message === 'string'
+    ) {
+      return error.error.message;
+    }
+
     switch (error.status) {
       case 0:
         return 'No se pudo conectar con la API. Revisa la conexión.';

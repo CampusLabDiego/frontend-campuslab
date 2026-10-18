@@ -63,7 +63,10 @@
         {{ errorFormulario() }}
       </p>
 
-      <p *ngIf="cargandoRecursos()" class="ayuda" role="status">
+      <p
+        *ngIf="cargandoRecursos()"
+        class="ayuda"
+        role="status">
         Cargando recursos...
       </p>
 
@@ -90,9 +93,7 @@
         (ngSubmit)="crearReserva(reservaForm)">
 
         <fieldset
-          [disabled]="
-            ocupado() || recursos().length === 0
-          ">
+          [disabled]="ocupado() || recursos().length === 0">
 
           <div class="form-grid">
 
@@ -209,9 +210,7 @@
           <button
             type="submit"
             class="btn-primary"
-            [disabled]="
-              ocupado() || recursos().length === 0
-            ">
+            [disabled]="ocupado() || recursos().length === 0">
             {{ guardando() ? 'Enviando...' : 'Solicitar reserva' }}
           </button>
 
@@ -226,6 +225,12 @@
       </form>
     </section>
 
+    <p *ngIf="esCliente" class="ayuda">
+      Cuando tu reserva esté EN PREPARACIÓN, podrás confirmar
+      tu llegada desde 15 minutos antes del inicio y antes
+      de que termine el horario reservado.
+    </p>
+
     <div
       class="content-box"
       aria-live="polite"
@@ -236,6 +241,7 @@
       </p>
 
       <ng-container *ngIf="!cargando()">
+
         <p
           *ngIf="reservas().length === 0 && !error()"
           class="mensaje">
@@ -264,7 +270,8 @@
                   <th scope="col">Cantidad</th>
                   <th scope="col">Motivo</th>
                   <th scope="col">Estado</th>
-                  <th *ngIf="puedeGestionar" scope="col">
+
+                  <th *ngIf="mostrarAcciones" scope="col">
                     Acciones
                   </th>
                 </tr>
@@ -297,26 +304,98 @@
                     <span class="estado">
                       {{ mostrarEstado(reserva.status) }}
                     </span>
+
+                    <p
+                      *ngIf="reserva.pendingStatus"
+                      class="texto-accion">
+                      Cambio pendiente a
+                      {{ mostrarEstado(reserva.pendingStatus) }}.
+                    </p>
                   </td>
 
-                  <td *ngIf="puedeGestionar">
+                  <td *ngIf="mostrarAcciones">
                     <div class="acciones">
+
                       <button
-                        *ngFor="
-                          let estado of estadosDisponibles(reserva.status)
-                        "
+                        *ngIf="puedeConfirmarLlegada(reserva)"
                         type="button"
                         class="btn-estado"
-                        [class.btn-cancelar]="estado === 'CANCELADA'"
                         [disabled]="ocupado()"
                         [attr.aria-label]="
-                          nombreAccion(estado)
-                          + ' reserva '
-                          + reserva.id
+                          'Confirmar llegada a la reserva ' + reserva.id
                         "
-                        (click)="cambiarEstado(reserva, estado)">
-                        {{ nombreAccion(estado) }}
+                        (click)="confirmarLlegada(reserva)">
+                        Confirmar llegada
                       </button>
+
+                      <ng-container *ngIf="puedeGestionar">
+
+                        <button
+                          *ngIf="
+                            ['APROBADA', 'EN_PREPARACION', 'EN_USO']
+                              .includes(reserva.status)
+                          "
+                          type="button"
+                          class="btn-estado"
+                          [disabled]="
+                            ocupado()
+                            || (
+                              reserva.pendingStatus != null
+                              && reserva.pendingStatus !== reserva.status
+                            )
+                          "
+                          [attr.aria-label]="
+                            'Sincronizar stock de la reserva ' + reserva.id
+                          "
+                          (click)="sincronizarStock(reserva)">
+                          Sincronizar stock
+                        </button>
+
+                        <button
+                          *ngFor="
+                            let estado of estadosDisponibles(reserva.status)
+                          "
+                          type="button"
+                          class="btn-estado"
+                          [class.btn-cancelar]="estado === 'CANCELADA'"
+                          [disabled]="
+                            ocupado()
+                            || (
+                              reserva.pendingStatus != null
+                              && reserva.pendingStatus !== estado
+                            )
+                          "
+                          [attr.aria-label]="
+                            nombreAccion(estado)
+                            + ' reserva '
+                            + reserva.id
+                          "
+                          (click)="cambiarEstado(reserva, estado)">
+                          {{ nombreAccion(estado) }}
+                        </button>
+
+                        <span
+                          *ngIf="
+                            estadosDisponibles(reserva.status).length === 0
+                          "
+                          class="texto-accion">
+                          Sin acciones disponibles
+                        </span>
+
+                      </ng-container>
+
+                      <span
+                        *ngIf="
+                          !puedeGestionar
+                          && !puedeConfirmarLlegada(reserva)
+                        "
+                        class="texto-accion">
+                        {{
+                          reserva.status === 'EN_USO'
+                            ? 'Reserva en uso'
+                            : 'Sin acciones disponibles'
+                        }}
+                      </span>
 
                       <span
                         *ngIf="actualizando() === reserva.id"
@@ -324,13 +403,6 @@
                         Guardando...
                       </span>
 
-                      <span
-                        *ngIf="
-                          estadosDisponibles(reserva.status).length === 0
-                        "
-                        class="texto-accion">
-                        Sin acciones disponibles
-                      </span>
                     </div>
                   </td>
                 </tr>
