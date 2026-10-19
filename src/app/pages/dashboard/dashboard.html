@@ -1,7 +1,10 @@
 <div class="container">
 
   <nav class="navbar">
-    <button class="logout" (click)="logout()">
+    <button
+      type="button"
+      class="logout"
+      (click)="logout()">
       Cerrar sesión
     </button>
   </nav>
@@ -57,6 +60,16 @@
 
         <p>
           Laboratorios, equipos e insumos
+        </p>
+      </div>
+    }
+
+    @if (puedeVerNotificaciones) {
+      <div class="card" routerLink="/notifications">
+        <h3>📨 Notificaciones y documentos</h3>
+
+        <p>
+          Correos, tickets y comprobantes PDF
         </p>
       </div>
     }

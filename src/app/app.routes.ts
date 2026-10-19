@@ -12,6 +12,7 @@ import { Bookings } from './pages/bookings/bookings';
 import { Catalog } from './pages/catalog/catalog';
 import { Reports } from './pages/reports/reports';
 import { Audit } from './pages/audit/audit';
+import { Notifications } from './pages/notifications/notifications';
 
 export const routes: Routes = [
   {
@@ -37,6 +38,14 @@ export const routes: Routes = [
     canActivate: [MsalGuard, roleGuard],
     data: {
       roles: ROLES_POR_MODULO.catalog
+    }
+  },
+  {
+    path: 'notifications',
+    component: Notifications,
+    canActivate: [MsalGuard, roleGuard],
+    data: {
+      roles: ['Admin', 'Operador', 'Cliente']
     }
   },
   {

@@ -55,6 +55,13 @@ export class Dashboard implements OnInit {
     );
   }
 
+  get puedeVerNotificaciones(): boolean {
+    return tieneAlgunRol(
+      this.usuario,
+      ['Admin', 'Operador', 'Cliente']
+    );
+  }
+
   get puedeVerReporteria(): boolean {
     return tieneAlgunRol(
       this.usuario,

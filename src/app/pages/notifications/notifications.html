@@ -1,0 +1,227 @@
+<div class="page-container">
+  <app-page-header></app-page-header>
+
+  <section class="page-card">
+    <h1>📨 Notificaciones y documentos</h1>
+
+    <p>
+      Consulta correos, tickets de preparación
+      y comprobantes de tus reservas.
+    </p>
+
+    <p class="ayuda">
+      Se consultan las últimas 100 tareas disponibles para tu cuenta.
+      La búsqueda y la paginación se aplican sobre esas tareas.
+    </p>
+
+    <div class="toolbar">
+      <input
+        type="search"
+        class="buscador"
+        placeholder="Buscar por reserva, usuario, tipo, evento o estado..."
+        aria-label="Buscar tareas"
+        [ngModel]="busqueda()"
+        (ngModelChange)="cambiarBusqueda($event)">
+
+      <button
+        *ngIf="busqueda()"
+        type="button"
+        class="btn-secondary"
+        (click)="limpiarBusqueda()">
+        Limpiar
+      </button>
+
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="cargando()"
+        (click)="cargarTareas()">
+        {{ cargando() ? 'Actualizando...' : 'Actualizar' }}
+      </button>
+    </div>
+
+    <p *ngIf="error()" class="error" role="alert">
+      {{ error() }}
+    </p>
+
+    <div
+      class="content-box"
+      aria-live="polite"
+      [attr.aria-busy]="cargando()">
+
+      <p *ngIf="cargando()" class="mensaje">
+        Cargando tareas...
+      </p>
+
+      <ng-container *ngIf="!cargando()">
+        <p
+          *ngIf="tareas().length === 0 && !error()"
+          class="mensaje">
+          Todavía no hay tareas registradas para mostrar.
+        </p>
+
+        <ng-container *ngIf="tareas().length > 0">
+          <div class="listado-resumen">
+            <p class="contador">
+              Mostrando {{ inicioMostrado() }}–{{ finMostrado() }}
+              de {{ tareasFiltradas().length }} tareas
+            </p>
+
+            <div class="selector-pagina">
+              <label for="cantidad-tareas">Por página:</label>
+
+              <select
+                id="cantidad-tareas"
+                [ngModel]="elementosPagina()"
+                (ngModelChange)="cambiarElementosPagina($event)">
+                <option [ngValue]="5">5</option>
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="20">20</option>
+              </select>
+            </div>
+          </div>
+
+          <div
+            *ngIf="tareasFiltradas().length > 0"
+            class="table-wrapper"
+            tabindex="0"
+            role="region"
+            aria-label="Listado de notificaciones y documentos">
+
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Reserva</th>
+                  <th scope="col">Usuario</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Evento</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Intentos</th>
+                  <th scope="col">Creación</th>
+                  <th scope="col">Documento</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr *ngFor="let tarea of tareasPagina()">
+                  <td>#{{ tarea.bookingId }}</td>
+
+                  <td class="usuario">{{ tarea.userEmail }}</td>
+
+                  <td>{{ nombreTipo(tarea.taskType) }}</td>
+
+                  <td>{{ nombreEvento(tarea.eventType) }}</td>
+
+                  <td>
+                    <span
+                      class="estado"
+                      [class.estado-completado]="
+                        tarea.state === 'COMPLETED'
+                      "
+                      [class.estado-fallido]="
+                        tarea.state === 'FAILED'
+                      ">
+                      {{ nombreEstado(tarea.state) }}
+                    </span>
+
+                    <p
+                      *ngIf="tarea.lastError"
+                      class="detalle-error">
+                      {{ tarea.lastError }}
+                    </p>
+                  </td>
+
+                  <td>{{ tarea.attempts }}</td>
+
+                  <td class="fecha">
+                    {{ tarea.createdAt | date:'dd/MM/yyyy HH:mm' }}
+                  </td>
+
+                  <td>
+                    <button
+                      *ngIf="tarea.documentAvailable"
+                      type="button"
+                      class="btn-primary btn-download"
+                      [disabled]="descargando() !== null"
+                      [attr.aria-label]="
+                        'Descargar '
+                        + nombreTipo(tarea.taskType)
+                        + ' de la reserva '
+                        + tarea.bookingId
+                      "
+                      (click)="descargar(tarea)">
+                      {{
+                        descargando() === tarea.taskId
+                          ? 'Descargando...'
+                          : 'Descargar PDF'
+                      }}
+                    </button>
+
+                    <span
+                      *ngIf="!tarea.documentAvailable"
+                      class="texto-secundario">
+                      {{
+                        tarea.taskType === 'EMAIL'
+                          ? 'No corresponde'
+                          : 'No disponible'
+                      }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p
+            *ngIf="tareasFiltradas().length === 0"
+            class="mensaje">
+            No hay tareas que coincidan con la búsqueda.
+          </p>
+
+          <nav
+            *ngIf="totalPaginas() > 1"
+            class="pagination"
+            aria-label="Paginación de tareas">
+
+            <button
+              type="button"
+              [disabled]="paginaActual() === 1"
+              (click)="cambiarPagina(1)">
+              Primera
+            </button>
+
+            <button
+              type="button"
+              [disabled]="paginaActual() === 1"
+              (click)="cambiarPagina(paginaActual() - 1)">
+              Anterior
+            </button>
+
+            <span>
+              Página {{ paginaActual() }} de {{ totalPaginas() }}
+            </span>
+
+            <button
+              type="button"
+              [disabled]="paginaActual() === totalPaginas()"
+              (click)="cambiarPagina(paginaActual() + 1)">
+              Siguiente
+            </button>
+
+            <button
+              type="button"
+              [disabled]="paginaActual() === totalPaginas()"
+              (click)="cambiarPagina(totalPaginas())">
+              Última
+            </button>
+          </nav>
+        </ng-container>
+      </ng-container>
+    </div>
+
+    <p class="ayuda">
+      Un correo completado indica que el servidor SMTP aceptó
+      el envío; la entrega al buzón depende del destinatario.
+    </p>
+  </section>
+</div>
