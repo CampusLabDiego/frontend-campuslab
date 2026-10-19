@@ -13,6 +13,7 @@ import { Catalog } from './pages/catalog/catalog';
 import { Reports } from './pages/reports/reports';
 import { Audit } from './pages/audit/audit';
 import { Notifications } from './pages/notifications/notifications';
+import { RabbitAdmin } from './pages/rabbit-admin/rabbit-admin';
 
 export const routes: Routes = [
   {
@@ -46,6 +47,14 @@ export const routes: Routes = [
     canActivate: [MsalGuard, roleGuard],
     data: {
       roles: ['Admin', 'Operador', 'Cliente']
+    }
+  },
+  {
+    path: 'rabbit-admin',
+    component: RabbitAdmin,
+    canActivate: [MsalGuard, roleGuard],
+    data: {
+      roles: ['Admin']
     }
   },
   {

@@ -74,6 +74,16 @@
       </div>
     }
 
+    @if (puedeVerRabbitAdmin) {
+      <div class="card" routerLink="/rabbit-admin">
+        <h3>🐇 Administración RabbitMQ</h3>
+
+        <p>
+          Gestión de colas, exchanges y bindings
+        </p>
+      </div>
+    }
+
     @if (puedeVerReporteria) {
       <div class="card" routerLink="/reports">
         <h3>📊 Reportería</h3>

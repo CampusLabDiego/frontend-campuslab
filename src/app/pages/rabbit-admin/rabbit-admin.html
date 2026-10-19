@@ -1,0 +1,285 @@
+<div class="page-container">
+  <app-page-header></app-page-header>
+
+  <section class="page-card">
+    <h1>🐇 Administración de RabbitMQ</h1>
+
+    <p>
+      Gestión de colas, exchanges y bindings.
+      Acceso exclusivo para administradores.
+    </p>
+
+    <p class="aviso">
+      Para las pruebas utiliza nombres con el prefijo
+      <strong>demo.campuslab.</strong>
+    </p>
+
+    <fieldset class="panel-operaciones" [disabled]="ocupado()">
+      <legend class="sr-only">Operaciones de administración</legend>
+
+      <div class="admin-grid">
+
+        <section class="content-box">
+          <h2>Crear cola</h2>
+
+          <form #colaForm="ngForm" (ngSubmit)="crearCola()">
+            <label for="cola-nombre">Nombre</label>
+            <input
+              id="cola-nombre"
+              name="colaNombre"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="cola.name">
+
+            <label for="cola-ttl">TTL de mensajes en milisegundos</label>
+            <input
+              id="cola-ttl"
+              name="colaTtl"
+              type="number"
+              required
+              min="1000"
+              max="604800000"
+              step="1"
+              [(ngModel)]="cola.ttlMs">
+
+            <p class="ayuda">
+              60000 milisegundos equivalen a un minuto.
+            </p>
+
+            <label for="cola-limite">Máximo de mensajes</label>
+            <input
+              id="cola-limite"
+              name="colaLimite"
+              type="number"
+              required
+              min="1"
+              max="100000"
+              step="1"
+              [(ngModel)]="cola.maxLength">
+
+            <button
+              type="submit"
+              class="btn-primary"
+              [disabled]="colaForm.invalid || ocupado()">
+              Crear cola
+            </button>
+          </form>
+        </section>
+
+        <section class="content-box">
+          <h2>Consultar o eliminar cola</h2>
+
+          <form #consultaForm="ngForm" (ngSubmit)="consultarCola()">
+            <label for="consulta-cola">Nombre de la cola</label>
+            <input
+              id="consulta-cola"
+              name="consultaCola"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="nombreCola">
+
+            <p class="ayuda">
+              La consulta muestra mensajes listos para entregar y
+              consumidores. La eliminación exige una cola vacía
+              y sin consumidores.
+            </p>
+
+            <div class="acciones">
+              <button
+                type="submit"
+                class="btn-primary"
+                [disabled]="consultaForm.invalid || ocupado()">
+                Consultar
+              </button>
+
+              <button
+                type="button"
+                class="btn-danger"
+                [disabled]="consultaForm.invalid || ocupado()"
+                (click)="eliminarCola()">
+                Eliminar cola
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="content-box">
+          <h2>Crear exchange</h2>
+
+          <form #exchangeForm="ngForm" (ngSubmit)="crearExchange()">
+            <label for="exchange-nombre">Nombre</label>
+            <input
+              id="exchange-nombre"
+              name="exchangeNombre"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="exchange.name">
+
+            <label for="exchange-tipo">Tipo</label>
+            <select
+              id="exchange-tipo"
+              name="exchangeTipo"
+              required
+              [(ngModel)]="exchange.type">
+              <option value="DIRECT">Direct</option>
+              <option value="TOPIC">Topic</option>
+            </select>
+
+            <p class="ayuda">
+              Direct utiliza coincidencia exacta.
+              Topic permite patrones con * y #.
+            </p>
+
+            <button
+              type="submit"
+              class="btn-primary"
+              [disabled]="exchangeForm.invalid || ocupado()">
+              Crear exchange
+            </button>
+          </form>
+        </section>
+
+        <section class="content-box">
+          <h2>Eliminar exchange</h2>
+
+          <form #eliminarExchangeForm="ngForm"
+                (ngSubmit)="eliminarExchange()">
+
+            <label for="exchange-eliminar">Nombre del exchange</label>
+            <input
+              id="exchange-eliminar"
+              name="exchangeEliminar"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="nombreExchange">
+
+            <p class="ayuda">
+              Eliminar un exchange también elimina sus bindings.
+              Las colas permanecen.
+            </p>
+
+            <button
+              type="submit"
+              class="btn-danger"
+              [disabled]="eliminarExchangeForm.invalid || ocupado()">
+              Eliminar exchange
+            </button>
+          </form>
+        </section>
+
+        <section class="content-box panel-binding">
+          <h2>Crear o eliminar binding</h2>
+
+          <form #bindingForm="ngForm" (ngSubmit)="crearBinding()">
+            <label for="binding-cola">Cola de destino</label>
+            <input
+              id="binding-cola"
+              name="bindingCola"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="binding.queue">
+
+            <label for="binding-exchange">Exchange de origen</label>
+            <input
+              id="binding-exchange"
+              name="bindingExchange"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="binding.exchange">
+
+            <label for="binding-key">Routing key o patrón</label>
+            <input
+              id="binding-key"
+              name="bindingKey"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="binding.routingKey">
+
+            <p class="ayuda">
+              La cola y el exchange deben existir.
+              Para eliminar un binding, indica los mismos tres valores
+              utilizados al crearlo.
+            </p>
+
+            <div class="acciones">
+              <button
+                type="submit"
+                class="btn-primary"
+                [disabled]="bindingForm.invalid || ocupado()">
+                Crear binding
+              </button>
+
+              <button
+                type="button"
+                class="btn-danger"
+                [disabled]="bindingForm.invalid || ocupado()"
+                (click)="eliminarBinding()">
+                Eliminar binding
+              </button>
+            </div>
+          </form>
+        </section>
+
+      </div>
+    </fieldset>
+
+    <section
+      class="resultado-box"
+      aria-live="polite"
+      [attr.aria-busy]="ocupado()">
+
+      <div class="resultado-header">
+        <h2>Resultado de la operación</h2>
+
+        <button
+          type="button"
+          class="btn-secondary"
+          [disabled]="ocupado()"
+          (click)="limpiarResultado()">
+          Limpiar
+        </button>
+      </div>
+
+      @if (ocupado()) {
+        <p class="mensaje">Procesando operación...</p>
+      }
+
+      @if (codigoHttp() !== null) {
+        <p class="codigo-http">
+          Código HTTP: <strong>{{ codigoHttp() }}</strong>
+        </p>
+      }
+
+      @if (mensaje()) {
+        <p class="exito" role="status">{{ mensaje() }}</p>
+      }
+
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+
+      @if (resultado()) {
+        <pre class="respuesta">{{ resultado() }}</pre>
+      }
+
+      @if (
+        !ocupado() &&
+        !mensaje() &&
+        !error() &&
+        codigoHttp() === null
+      ) {
+        <p class="mensaje">
+          Ejecuta una operación para ver su respuesta.
+        </p>
+      }
+    </section>
+
+  </section>
+</div>

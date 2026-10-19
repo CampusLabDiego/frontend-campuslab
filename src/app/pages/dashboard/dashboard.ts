@@ -62,6 +62,13 @@ export class Dashboard implements OnInit {
     );
   }
 
+  get puedeVerRabbitAdmin(): boolean {
+    return tieneAlgunRol(
+      this.usuario,
+      ['Admin']
+    );
+  }
+
   get puedeVerReporteria(): boolean {
     return tieneAlgunRol(
       this.usuario,
