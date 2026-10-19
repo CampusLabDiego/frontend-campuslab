@@ -1,18 +1,17 @@
 import {
   Component,
+  DestroyRef,
   OnInit,
   computed,
   inject,
   signal
 } from '@angular/core';
 
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
-
-import {
-  HttpClient,
-  HttpErrorResponse
-} from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { interval } from 'rxjs';
 
 import { MsalService } from '@azure/msal-angular';
 
@@ -70,11 +69,15 @@ export class Bookings implements OnInit {
 
   private readonly http = inject(HttpClient);
   private readonly msal = inject(MsalService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private pausaAutomatica = false;
 
   reservas = signal<Reserva[]>([]);
   recursos = signal<Recurso[]>([]);
 
   cargando = signal(false);
+  consultando = signal(false);
   cargandoRecursos = signal(false);
   guardando = signal(false);
   actualizando = signal<number | null>(null);
@@ -89,9 +92,14 @@ export class Bookings implements OnInit {
 
   ocupado = computed(() =>
     this.cargando()
+    || this.consultando()
     || this.cargandoRecursos()
     || this.guardando()
     || this.actualizando() !== null
+  );
+
+  hayPendientes = computed(() =>
+    this.reservas().some(reserva => !!reserva.pendingStatus)
   );
 
   reservasFiltradas = computed(() => {
@@ -152,7 +160,10 @@ export class Bookings implements OnInit {
       return 0;
     }
 
-    if (recurso.type === 'LABORATORIO') {
+    if (
+      recurso.type === 'LABORATORIO'
+      || recurso.type === 'LABORATORY'
+    ) {
       return 1;
     }
 
@@ -171,6 +182,18 @@ export class Bookings implements OnInit {
 
   ngOnInit(): void {
     this.cargarReservas();
+
+    interval(3_000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (
+          this.hayPendientes()
+          && !this.ocupado()
+          && !this.pausaAutomatica
+        ) {
+          this.consultarReservas(true);
+        }
+      });
   }
 
   cargarReservas(): void {
@@ -178,28 +201,55 @@ export class Bookings implements OnInit {
       return;
     }
 
-    this.cargando.set(true);
-    this.error.set('');
-    this.mensaje.set('');
+    this.pausaAutomatica = false;
+    this.consultarReservas(false);
+  }
+
+  private consultarReservas(automatica: boolean): void {
+    if (this.ocupado()) {
+      return;
+    }
+
+    this.consultando.set(true);
+
+    if (!automatica) {
+      this.cargando.set(true);
+      this.error.set('');
+    }
 
     this.http.get<Reserva[]>(
       `${API_BASE_URL}/api/bookings`
-    ).subscribe({
-      next: data => {
-        this.reservas.set(data);
-        this.cargando.set(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.error.set(
-          this.mensajeError(
-            error,
-            'No se pudieron cargar las reservas. Intenta nuevamente.'
-          )
-        );
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: data => {
+          const anteriores = this.reservas();
 
-        this.cargando.set(false);
-      }
-    });
+          this.reservas.set(data);
+          this.consultando.set(false);
+          this.cargando.set(false);
+          this.error.set('');
+
+          this.informarOperacionesFinalizadas(anteriores, data);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.consultando.set(false);
+          this.cargando.set(false);
+
+          if (error.status === 401 || error.status === 403) {
+            this.pausaAutomatica = true;
+          }
+
+          this.error.set(
+            this.mensajeError(
+              error,
+              automatica
+                ? 'No se pudo consultar el avance. Se volverá a intentar automáticamente.'
+                : 'No se pudieron cargar las reservas. Intenta nuevamente.'
+            )
+          );
+        }
+      });
   }
 
   abrirFormulario(): void {
@@ -232,34 +282,36 @@ export class Bookings implements OnInit {
 
     this.http.get<Recurso[]>(
       `${API_BASE_URL}/api/catalog/resources`
-    ).subscribe({
-      next: data => {
-        this.recursos.set(
-          data.filter(recurso => recurso.active)
-        );
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: data => {
+          this.recursos.set(
+            data.filter(recurso => recurso.active)
+          );
 
-        const seleccionadoExiste = this.recursos().some(
-          recurso => recurso.id === this.formulario.resourceId
-        );
+          const seleccionadoExiste = this.recursos().some(
+            recurso => recurso.id === this.formulario.resourceId
+          );
 
-        if (!seleccionadoExiste) {
-          this.formulario.resourceId = null;
+          if (!seleccionadoExiste) {
+            this.formulario.resourceId = null;
+          }
+
+          this.cargandoRecursos.set(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.recursos.set([]);
+          this.cargandoRecursos.set(false);
+
+          this.errorFormulario.set(
+            this.mensajeError(
+              error,
+              'No se pudieron cargar los recursos del catálogo.'
+            )
+          );
         }
-
-        this.cargandoRecursos.set(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.recursos.set([]);
-        this.cargandoRecursos.set(false);
-
-        this.errorFormulario.set(
-          this.mensajeError(
-            error,
-            'No se pudieron cargar los recursos del catálogo.'
-          )
-        );
-      }
-    });
+      });
   }
 
   cancelarFormulario(): void {
@@ -290,7 +342,6 @@ export class Bookings implements OnInit {
       this.errorFormulario.set(
         'Completa los campos obligatorios correctamente.'
       );
-
       return;
     }
 
@@ -375,34 +426,36 @@ export class Bookings implements OnInit {
     this.http.post<Reserva>(
       `${API_BASE_URL}/api/bookings`,
       payload
-    ).subscribe({
-      next: creada => {
-        this.reservas.update(reservas => [
-          creada,
-          ...reservas
-        ]);
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: creada => {
+          this.reservas.update(reservas => [
+            creada,
+            ...reservas
+          ]);
 
-        this.busqueda.set('');
-        this.guardando.set(false);
-        this.mostrarFormulario.set(false);
-        this.formulario = this.formularioVacio();
+          this.busqueda.set('');
+          this.guardando.set(false);
+          this.mostrarFormulario.set(false);
+          this.formulario = this.formularioVacio();
 
-        this.mensaje.set(
-          `Reserva #${creada.id} registrada como `
-          + `${this.mostrarEstado(creada.status)}.`
-        );
-      },
-      error: (error: HttpErrorResponse) => {
-        this.guardando.set(false);
+          this.mensaje.set(
+            `Reserva #${creada.id} registrada como `
+            + `${this.mostrarEstado(creada.status)}.`
+          );
+        },
+        error: (error: HttpErrorResponse) => {
+          this.guardando.set(false);
 
-        this.errorFormulario.set(
-          this.mensajeError(
-            error,
-            'No se pudo registrar la reserva. Revisa los datos antes de reintentar.'
-          )
-        );
-      }
-    });
+          this.errorFormulario.set(
+            this.mensajeError(
+              error,
+              'No se pudo registrar la reserva. Revisa los datos antes de reintentar.'
+            )
+          );
+        }
+      });
   }
 
   puedeConfirmarLlegada(reserva: Reserva): boolean {
@@ -424,47 +477,42 @@ export class Bookings implements OnInit {
       return;
     }
 
-    const confirmado = window.confirm(
+    if (!window.confirm(
       `¿Confirmar tu llegada para la reserva #${reserva.id}?`
-    );
-
-    if (!confirmado) {
+    )) {
       return;
     }
 
-    this.actualizando.set(reserva.id);
-    this.error.set('');
-    this.mensaje.set('');
+    this.iniciarOperacion(reserva.id);
 
     this.http.post<Reserva>(
       `${API_BASE_URL}/api/bookings/${reserva.id}/arrival`,
       null
-    ).subscribe({
-      next: actualizada => {
-        this.actualizarReservaEnLista(actualizada);
-        this.actualizando.set(null);
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: actualizada => {
+          this.actualizarReservaEnLista(actualizada);
+          this.actualizando.set(null);
 
-        this.mensaje.set(
-          `Llegada confirmada. La reserva #${actualizada.id} está EN USO.`
-        );
-      },
-      error: (error: HttpErrorResponse) => {
-        this.actualizando.set(null);
-
-        this.error.set(
-          this.mensajeError(
+          this.mensaje.set(
+            `Llegada confirmada. La reserva #${actualizada.id} está EN USO.`
+          );
+        },
+        error: (error: HttpErrorResponse) => {
+          this.finalizarConError(
             error,
             'No se pudo confirmar la llegada. Actualiza la reserva antes de reintentar.'
-          )
-        );
-      }
-    });
+          );
+        }
+      });
   }
 
   sincronizarStock(reserva: Reserva): void {
     if (
       !this.puedeGestionar
       || this.ocupado()
+      || !!reserva.pendingStatus
       || !['APROBADA', 'EN_PREPARACION', 'EN_USO']
         .includes(reserva.status)
     ) {
@@ -482,50 +530,36 @@ export class Bookings implements OnInit {
       return;
     }
 
-    this.actualizando.set(reserva.id);
-    this.error.set('');
-    this.mensaje.set('');
+    this.iniciarOperacion(reserva.id);
 
     this.http.post<Reserva>(
       `${API_BASE_URL}/api/bookings/${reserva.id}/stock/reconcile`,
       null
-    ).subscribe({
-      next: actualizada => {
-        this.actualizarReservaEnLista(actualizada);
-        this.actualizando.set(null);
-
-        this.mensaje.set(
-          `Stock de la reserva #${actualizada.id} sincronizado. `
-          + 'Actualiza el catálogo para ver el saldo.'
-        );
-      },
-      error: (error: HttpErrorResponse) => {
-        this.actualizando.set(null);
-
-        this.error.set(
-          this.mensajeError(
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: actualizada => {
+          this.registrarRespuestaOperacion(actualizada);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.finalizarConError(
             error,
-            'No se pudo sincronizar el stock. Revisa la reserva y el catálogo.'
-          )
-        );
-      }
-    });
+            'No se pudo solicitar la sincronización del stock.'
+          );
+        }
+      });
   }
 
   estadosDisponibles(estado: string): string[] {
     switch (estado) {
       case 'SOLICITADA':
         return ['APROBADA', 'CANCELADA'];
-
       case 'APROBADA':
         return ['EN_PREPARACION', 'CANCELADA'];
-
       case 'EN_PREPARACION':
         return ['EN_USO'];
-
       case 'EN_USO':
         return ['DEVUELTA'];
-
       default:
         return [];
     }
@@ -535,6 +569,7 @@ export class Bookings implements OnInit {
     if (
       !this.puedeGestionar
       || this.ocupado()
+      || !!reserva.pendingStatus
       || !this.estadosDisponibles(reserva.status).includes(estado)
     ) {
       return;
@@ -549,35 +584,25 @@ export class Bookings implements OnInit {
       return;
     }
 
-    this.actualizando.set(reserva.id);
-    this.error.set('');
-    this.mensaje.set('');
+    this.iniciarOperacion(reserva.id);
 
     this.http.patch<Reserva>(
       `${API_BASE_URL}/api/bookings/${reserva.id}/status`,
       null,
       { params: { status: estado } }
-    ).subscribe({
-      next: actualizada => {
-        this.actualizarReservaEnLista(actualizada);
-        this.actualizando.set(null);
-
-        this.mensaje.set(
-          `Reserva #${actualizada.id} actualizada a `
-          + `${this.mostrarEstado(actualizada.status)}.`
-        );
-      },
-      error: (error: HttpErrorResponse) => {
-        this.actualizando.set(null);
-
-        this.error.set(
-          this.mensajeError(
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: actualizada => {
+          this.registrarRespuestaOperacion(actualizada);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.finalizarConError(
             error,
-            'No se pudo cambiar el estado. Actualiza las reservas y revisa su estado antes de intentar nuevamente.'
-          )
-        );
-      }
-    });
+            'No se pudo solicitar el cambio de estado. Actualiza las reservas antes de reintentar.'
+          );
+        }
+      });
   }
 
   fechaParaVista(fecha: string): string {
@@ -596,21 +621,91 @@ export class Bookings implements OnInit {
     switch (estado) {
       case 'APROBADA':
         return 'Aprobar';
-
       case 'CANCELADA':
         return 'Cancelar';
-
       case 'EN_PREPARACION':
         return 'Preparar';
-
       case 'EN_USO':
         return 'Registrar uso';
-
       case 'DEVUELTA':
         return 'Registrar devolución';
-
       default:
         return this.mostrarEstado(estado);
+    }
+  }
+
+  private iniciarOperacion(id: number): void {
+    this.actualizando.set(id);
+    this.error.set('');
+    this.mensaje.set('');
+    this.pausaAutomatica = false;
+  }
+
+  private registrarRespuestaOperacion(actualizada: Reserva): void {
+    this.actualizarReservaEnLista(actualizada);
+    this.actualizando.set(null);
+
+    if (actualizada.pendingStatus) {
+      this.mensaje.set(
+        `Procesando la operación de la reserva #${actualizada.id}. `
+        + 'El listado se actualizará automáticamente.'
+      );
+    } else {
+      this.mensaje.set(
+        `Estado actual de la reserva #${actualizada.id}: `
+        + `${this.mostrarEstado(actualizada.status)}.`
+      );
+    }
+  }
+
+  private finalizarConError(
+    error: HttpErrorResponse,
+    predeterminado: string
+  ): void {
+    this.actualizando.set(null);
+    this.error.set(this.mensajeError(error, predeterminado));
+  }
+
+  private informarOperacionesFinalizadas(
+    anteriores: Reserva[],
+    actuales: Reserva[]
+  ): void {
+    const previas = new Map(
+      anteriores.map(reserva => [reserva.id, reserva])
+    );
+
+    const mensajes: string[] = [];
+    const avisos: string[] = [];
+
+    for (const actual of actuales) {
+      const anterior = previas.get(actual.id);
+
+      if (!anterior?.pendingStatus || actual.pendingStatus) {
+        continue;
+      }
+
+      if (anterior.pendingStatus === anterior.status) {
+        mensajes.push(
+          `El proceso de sincronización de la reserva #${actual.id} `
+          + 'finalizó. Revisa el saldo en catálogo.'
+        );
+      } else if (actual.status === anterior.pendingStatus) {
+        mensajes.push(
+          `Reserva #${actual.id} actualizada a `
+          + `${this.mostrarEstado(actual.status)}.`
+        );
+      } else {
+        avisos.push(
+          `La reserva #${actual.id} terminó de procesarse, `
+          + `pero sigue en ${this.mostrarEstado(actual.status)}. `
+          + 'Revisa la disponibilidad antes de reintentar.'
+        );
+      }
+    }
+
+    if (mensajes.length > 0 || avisos.length > 0) {
+      this.mensaje.set(mensajes.join(' '));
+      this.error.set(avisos.join(' '));
     }
   }
 
@@ -646,19 +741,14 @@ export class Bookings implements OnInit {
     switch (error.status) {
       case 0:
         return 'No se pudo conectar con la API. Revisa la conexión.';
-
       case 401:
         return 'No se pudo autorizar la operación. Inicia sesión nuevamente.';
-
       case 403:
         return 'Tu cuenta no tiene permiso para realizar esta operación.';
-
       case 404:
         return 'El registro ya no está disponible. Actualiza los datos.';
-
       case 409:
         return 'La solicitud entra en conflicto con los datos actuales. Actualiza y revisa la disponibilidad.';
-
       default:
         return predeterminado;
     }
