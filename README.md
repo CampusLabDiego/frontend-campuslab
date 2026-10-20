@@ -1,59 +1,119 @@
-# FrontendCampuslab
+# Frontend CampusLab
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.2.
+Aplicación Angular para gestionar recursos académicos, reservas,
+notificaciones, documentos y auditoría.
 
-## Development server
+## Acceso público
 
-To start a local development server, run:
+https://wktaaga6j4.execute-api.us-east-1.amazonaws.com
 
-```bash
-ng serve
+## Tecnologías
+
+- Angular y TypeScript.
+- Microsoft Authentication Library: MSAL.
+- Microsoft Entra ID.
+- HttpClient.
+- Nginx y Docker.
+
+## Autenticación
+
+MSAL realiza el inicio y cierre de sesión con Microsoft Entra ID.
+
+El interceptor adjunta el Access Token a las peticiones protegidas.
+Los guards controlan la navegación por sesión y rol.
+
+La autorización también se aplica en el backend.
+
+Configuración principal:
+
+```text
+src/app/core/auth/msal-config.ts
+src/app/core/auth/role.guard.ts
+src/app/app.routes.ts
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+El scope solicitado es:
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
+```text
+api://3bdd9813-1e51-4686-a89a-760ac0531de9/access_as_user
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+La redirección utiliza el origen desde el que se abre la aplicación.
+Ese origen debe estar registrado como SPA en Entra ID.
 
-```bash
-ng generate --help
+## Módulos
+
+- Dashboard: usuario y accesos según rol.
+- Catálogo: consulta y administración de recursos.
+- Reservas: creación, consulta y gestión de estados.
+- Notificaciones: tareas, correos y descarga de documentos PDF.
+- Auditoría: historial de eventos con búsqueda y paginación.
+- Administración RabbitMQ: colas, exchanges y bindings.
+
+Reportería todavía está pendiente como módulo de negocio.
+
+## Roles
+
+- Cliente: consulta catálogo, administra el flujo permitido de sus
+  reservas y consulta sus notificaciones/documentos.
+- Operador: gestiona reservas y consulta notificaciones/documentos.
+- Admin: administra recursos, reservas y RabbitMQ; consulta auditoría.
+- Auditor: consulta auditoría.
+
+## Desarrollo local
+
+Instalar dependencias desde el lockfile:
+
+```powershell
+npm ci
 ```
 
-## Building
+Iniciar:
 
-To build the project run:
-
-```bash
-ng build
+```powershell
+npm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Dirección local:
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
+```text
+http://localhost:4200
 ```
 
-## Running end-to-end tests
+El backend se consume mediante API Gateway, configurado en API_BASE_URL.
 
-For end-to-end (e2e) testing, run:
+## Compilación
 
-```bash
-ng e2e
+```powershell
+npm run build
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+La salida utilizada por Docker es:
 
-## Additional Resources
+```text
+dist/frontend-campuslab/browser
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Despliegue
+
+El Dockerfile compila Angular y sirve el resultado mediante Nginx.
+
+nginx.conf configura el fallback a index.html para permitir recargar
+rutas como /dashboard, /bookings y /audit.
+
+En EC2, el contenedor se publica en el puerto 4200 del host.
+API Gateway entrega el frontend por HTTPS.
+
+La guía completa de despliegue está en infra-campuslab.
+
+## Auditoría
+
+La vista consulta hasta 500 eventos recientes.
+
+Distingue entre:
+
+- Usuario que solicita un cambio.
+- Sistema automático que confirma o rechaza el resultado.
+- Operación de stock que relaciona ambos eventos.
+
+El historial comienza desde la activación de la auditoría.
