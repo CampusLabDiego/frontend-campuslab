@@ -1,28 +1,201 @@
 <div class="page-container">
+  <app-page-header></app-page-header>
 
-<app-page-header></app-page-header>
+  <section class="page-card">
+    <h1>🔍 Auditoría</h1>
 
+    <p class="descripcion">
+      Historial de eventos de reservas.
+      Consulta disponible para Admin y Auditor.
+    </p>
 
-<section class="page-card">
+    <p class="aviso">
+      Se consultan hasta 500 eventos recientes.
+      El historial comienza con las operaciones realizadas
+      después de activar la auditoría.
+    </p>
 
-<h1>🔍 Auditoría</h1>
+    <div class="toolbar">
+      <input
+        type="search"
+        aria-label="Buscar eventos de auditoría"
+        placeholder="Buscar reserva, recurso, actor, estado u operación..."
+        [ngModel]="busqueda()"
+        (ngModelChange)="cambiarBusqueda($event)">
 
-<p>
-Seguimiento y trazabilidad de eventos del sistema
-</p>
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="cargando()"
+        (click)="cargarEventos()">
+        {{ cargando() ? 'Cargando...' : 'Actualizar' }}
+      </button>
+    </div>
 
+    @if (error()) {
+      <p class="error" role="alert">
+        {{ error() }}
+      </p>
+    }
 
-<div class="content-box">
+    <div class="resumen">
+      <p>
+        Eventos encontrados:
+        <strong>{{ eventosFiltrados().length }}</strong>
+      </p>
 
-<h3>Próximamente</h3>
+      <label>
+        Por página:
+        <select
+          [ngModel]="elementosPagina()"
+          (ngModelChange)="cambiarElementosPagina($event)">
+          <option [ngValue]="5">5</option>
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="20">20</option>
+        </select>
+      </label>
+    </div>
 
-<p>
-Aquí se visualizará el historial de acciones realizadas en CampusLab.
-</p>
+    @if (ultimaActualizacion()) {
+      <p class="actualizacion">
+        Última consulta:
+        {{ ultimaActualizacion() | date:'dd/MM/yyyy HH:mm:ss' }}
+      </p>
+    }
 
-</div>
+    <div
+      class="content-box"
+      aria-live="polite"
+      [attr.aria-busy]="cargando()">
 
+      @if (cargando()) {
+        <p class="mensaje">Consultando eventos...</p>
+      }
 
-</section>
+      @if (!cargando()) {
+        @if (eventos().length === 0 && !error()) {
+          <p class="mensaje">
+            Todavía no hay eventos registrados.
+            Crea una reserva nueva y luego actualiza el historial.
+          </p>
+        }
 
+        @if (
+          eventos().length > 0 &&
+          eventosFiltrados().length === 0
+        ) {
+          <p class="mensaje">
+            No hay eventos que coincidan con la búsqueda.
+          </p>
+        }
+
+        <div class="timeline">
+          @for (evento of eventosPagina(); track evento.eventId) {
+            <article
+              class="evento"
+              [class.rechazado]="
+                evento.eventType === 'STATUS_CHANGE_REJECTED'
+              ">
+
+              <div class="evento-header">
+                <h2>{{ nombreEvento(evento.eventType) }}</h2>
+
+                <span class="reserva">
+                  Reserva #{{ evento.bookingId }}
+                </span>
+              </div>
+
+              <p class="fecha">
+                {{ evento.occurredAt | date:'dd/MM/yyyy HH:mm:ss' }}
+                · Hora local del equipo
+              </p>
+
+              <dl class="datos-evento">
+                <div>
+                  <dt>Recurso</dt>
+                  <dd>{{ evento.resourceName }}</dd>
+                </div>
+
+                <div>
+                  <dt>Actor</dt>
+                  <dd>{{ mostrarActor(evento) }}</dd>
+                </div>
+
+                <div>
+                  <dt>Estado anterior</dt>
+                  <dd>{{ mostrarEstado(evento.previousStatus) }}</dd>
+                </div>
+
+                <div>
+                  <dt>Estado registrado</dt>
+                  <dd>{{ mostrarEstado(evento.status) }}</dd>
+                </div>
+
+                <div>
+                  <dt>Estado solicitado</dt>
+                  <dd>{{ mostrarEstado(evento.targetStatus) }}</dd>
+                </div>
+              </dl>
+
+              @if (evento.eventType === 'STATUS_CHANGE_REQUESTED') {
+                <p class="nota">
+                  Esta entrada registra la solicitud.
+                  Su resultado se registra en otro evento.
+                </p>
+              }
+
+              <details>
+                <summary>Ver identificadores y recepción</summary>
+
+                <dl class="identificadores">
+                  <dt>Evento</dt>
+                  <dd>{{ evento.eventId }}</dd>
+
+                  <dt>Operación de stock</dt>
+                  <dd>{{ evento.operationId || 'No corresponde' }}</dd>
+
+                  <dt>Identificador del actor</dt>
+                  <dd>{{ evento.actorId }}</dd>
+
+                  <dt>Propietario de la reserva</dt>
+                  <dd>{{ evento.ownerId }}</dd>
+
+                  <dt>Recibido</dt>
+                  <dd>
+                    {{ evento.receivedAt | date:'dd/MM/yyyy HH:mm:ss' }}
+                  </dd>
+                </dl>
+              </details>
+
+            </article>
+          }
+        </div>
+      }
+    </div>
+
+    @if (eventosFiltrados().length > 0) {
+      <nav class="pagination" aria-label="Páginas de auditoría">
+        <button
+          type="button"
+          [disabled]="paginaActual() === 1 || cargando()"
+          (click)="cambiarPagina(paginaActual() - 1)">
+          Anterior
+        </button>
+
+        <span>
+          Página {{ paginaActual() }} de {{ totalPaginas() }}
+        </span>
+
+        <button
+          type="button"
+          [disabled]="
+            paginaActual() >= totalPaginas() || cargando()
+          "
+          (click)="cambiarPagina(paginaActual() + 1)">
+          Siguiente
+        </button>
+      </nav>
+    }
+
+  </section>
 </div>
